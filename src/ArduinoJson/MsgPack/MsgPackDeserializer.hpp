@@ -76,6 +76,27 @@ class MsgPackDeserializer {
           variant->setBoolean(code == 0xc3);
         return DeserializationError::Ok;
 
+      case 0xc4:  // bin 8
+      case 0xc5:  // bin 16
+      case 0xc6:  // bin 32
+        {
+          uint8_t sizeBytes = 1U << ((code - 0xc4) % 4);
+          
+          err = readBytes(header + 1, sizeBytes);
+          if (err)
+            return err;
+            
+          uint32_t size32 = 0;
+          for (uint8_t i = 0; i < sizeBytes; i++)
+            size32 = (size32 << 8) | header[i + 1];
+          
+          size_t size = size_t(size32);
+          if (size < size32)                        
+            return DeserializationError::NoMemory;  
+          
+          return readBinary(allowValue ? variant : nullptr, size);
+        }
+
       case 0xca:
         if (allowValue)
           return readFloat<float>(variant);
@@ -100,13 +121,11 @@ class MsgPackDeserializer {
     bool isExtension = code >= 0xc7 && code <= 0xc9;
 
     switch (code) {
-      case 0xc4:  // bin 8
       case 0xc7:  // ext 8
       case 0xd9:  // str 8
         sizeBytes = 1;
         break;
 
-      case 0xc5:  // bin 16
       case 0xc8:  // ext 16
       case 0xda:  // str 16
       case 0xdc:  // array 16
@@ -114,7 +133,6 @@ class MsgPackDeserializer {
         sizeBytes = 2;
         break;
 
-      case 0xc6:  // bin 32
       case 0xc9:  // ext 32
       case 0xdb:  // str 32
       case 0xdd:  // array 32
@@ -244,6 +262,29 @@ class MsgPackDeserializer {
     }
 
     return DeserializationError::Ok;
+  }
+
+  DeserializationError::Code readBinary(VariantData* variant, size_t size) {
+    // Check if we want to skip this value
+    if (variant == nullptr) 
+      return skipBytes(size);
+
+    // 获取当前读取位置
+    const void* currentPos = reader_.currentPosition();
+    
+    // 如果能够获取当前位置，则保存引用
+    if (currentPos) {
+      // 存储二进制数据的引用
+      variant->setLinkedBinary(currentPos, size);
+      
+      // 跳过二进制数据，因为我们只是引用它
+      return skipBytes(size);
+    } else {
+      // If reader doesn't support position tracking, we need to read and store data
+      // This is a fallback to the old behavior
+      auto err = readRawString(variant, "\xc4", 1, size);
+      return err;
+    }
   }
 
   template <typename T>

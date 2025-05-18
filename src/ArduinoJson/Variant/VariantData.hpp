@@ -87,6 +87,11 @@ class VariantData {
         return visit.visit(RawString(content_.asOwnedString->data,
                                      content_.asOwnedString->length));
 
+      case VariantType::LinkedBinary:
+        return visit.visit(RawString(
+            static_cast<const char*>(content_.asLinkedBinary.data),
+            content_.asLinkedBinary.size));
+
       case VariantType::Int32:
         return visit.visit(static_cast<JsonInteger>(content_.asInt32));
 
@@ -312,6 +317,15 @@ class VariantData {
     }
   }
 
+  BinaryItem asBinary() const {
+    switch (type_) {
+      case VariantType::LinkedBinary:
+        return content_.asLinkedBinary;
+      default:
+        return {nullptr, 0};
+    }
+  }
+
 #if ARDUINOJSON_USE_EXTENSIONS
   const VariantExtension* getExtension(const ResourceManager* resources) const;
 #endif
@@ -524,6 +538,14 @@ class VariantData {
     ARDUINOJSON_ASSERT(s);
     type_ = VariantType::LinkedString;
     content_.asLinkedString = s;
+  }
+
+  void setLinkedBinary(const void* data, size_t size) {
+    ARDUINOJSON_ASSERT(type_ == VariantType::Null);  // must call clear() first
+    ARDUINOJSON_ASSERT(data);
+    type_ = VariantType::LinkedBinary;
+    content_.asLinkedBinary.data = data;
+    content_.asLinkedBinary.size = size;
   }
 
   template <typename TAdaptedString>

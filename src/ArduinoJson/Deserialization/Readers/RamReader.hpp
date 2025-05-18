@@ -35,6 +35,10 @@ struct Reader<TSource*, enable_if_t<IsCharOrVoid<TSource>::value>> {
       buffer[i] = *ptr_++;
     return length;
   }
+
+  const void* currentPosition() const {
+    return ptr_;
+  }
 };
 
 template <typename TSource>

@@ -27,6 +27,13 @@ struct Reader {
     return source_->readBytes(buffer, length);
   }
 
+  // 获取当前读取位置的指针，如果源不支持则返回nullptr
+  const void* currentPosition() const {
+    // 默认实现：如果源提供了currentPosition方法则调用它
+    // 否则返回nullptr
+    return source_->currentPosition ? source_->currentPosition() : nullptr;
+  }
+
  private:
   TSource* source_;
 };

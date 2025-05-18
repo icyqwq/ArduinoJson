@@ -29,6 +29,7 @@ enum class VariantType : uint8_t {
   LinkedString = 0x04,  // 0000 0100
   OwnedString = 0x05,   // 0000 0101
   Boolean = 0x06,       // 0000 0110
+  LinkedBinary = 0x07,  // 0000 0111
   Uint32 = 0x0A,        // 0000 1010
   Int32 = 0x0C,         // 0000 1100
   Float = 0x0E,         // 0000 1110
@@ -49,6 +50,11 @@ inline bool operator&(VariantType type, VariantTypeBits bit) {
 
 const size_t tinyStringMaxLength = 3;
 
+struct BinaryItem {
+  const void* data;
+  size_t size;
+};
+
 union VariantContent {
   VariantContent() {}
 
@@ -65,6 +71,7 @@ union VariantContent {
   const char* asLinkedString;
   struct StringNode* asOwnedString;
   char asTinyString[tinyStringMaxLength + 1];
+  BinaryItem asLinkedBinary;
 };
 
 #if ARDUINOJSON_USE_EXTENSIONS

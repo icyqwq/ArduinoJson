@@ -29,6 +29,10 @@ class IteratorReader {
       buffer[i++] = *ptr_++;
     return i;
   }
+
+  const void* currentPosition() const {
+    return &(*ptr_);
+  }
 };
 
 template <typename TSource>

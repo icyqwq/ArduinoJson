@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ArduinoJson/Variant/Converter.hpp>
+#include <ArduinoJson/Variant/VariantContent.hpp>
 
 ARDUINOJSON_BEGIN_PUBLIC_NAMESPACE
 
@@ -31,37 +32,9 @@ struct Converter<MsgPackBinary> : private detail::VariantAttorney {
     auto resources = getResourceManager(dst);
     data->clear(resources);
     if (src.data()) {
-      size_t headerSize = src.size() >= 0x10000 ? 5
-                          : src.size() >= 0x100 ? 3
-                                                : 2;
-      auto str = resources->createString(src.size() + headerSize);
-      if (str) {
-        resources->saveString(str);
-        auto ptr = reinterpret_cast<uint8_t*>(str->data);
-        switch (headerSize) {
-          case 2:
-            ptr[0] = uint8_t(0xc4);
-            ptr[1] = uint8_t(src.size() & 0xff);
-            break;
-          case 3:
-            ptr[0] = uint8_t(0xc5);
-            ptr[1] = uint8_t(src.size() >> 8 & 0xff);
-            ptr[2] = uint8_t(src.size() & 0xff);
-            break;
-          case 5:
-            ptr[0] = uint8_t(0xc6);
-            ptr[1] = uint8_t(src.size() >> 24 & 0xff);
-            ptr[2] = uint8_t(src.size() >> 16 & 0xff);
-            ptr[3] = uint8_t(src.size() >> 8 & 0xff);
-            ptr[4] = uint8_t(src.size() & 0xff);
-            break;
-          default:
-            ARDUINOJSON_ASSERT(false);
-        }
-        memcpy(ptr + headerSize, src.data(), src.size());
-        data->setRawString(str);
-        return;
-      }
+      // 首先尝试直接存储为二进制引用
+      data->setLinkedBinary(src.data(), src.size());
+      return;
     }
   }
 
@@ -69,6 +42,14 @@ struct Converter<MsgPackBinary> : private detail::VariantAttorney {
     auto data = getData(src);
     if (!data)
       return {};
+
+    // 先检查是否是LinkedBinary类型
+    auto binaryItem = data->asBinary();
+    if (binaryItem.data != nullptr) {
+      return MsgPackBinary(binaryItem.data, binaryItem.size);
+    }
+
+    // 再检查是否是RawString类型（为了兼容性）
     auto rawstr = data->asRawString();
     auto p = reinterpret_cast<const uint8_t*>(rawstr.c_str());
     auto n = rawstr.size();
