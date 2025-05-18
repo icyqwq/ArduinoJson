@@ -403,4 +403,37 @@ struct Converter<JsonObject> : private detail::VariantAttorney {
   }
 };
 
+// 添加对BinaryItem的支持
+template <>
+struct Converter<detail::BinaryItem> : private detail::VariantAttorney {
+  static void toJson(const detail::BinaryItem& src, JsonVariant dst) {
+    auto data = getData(dst);
+    if (!data)
+      return;
+    auto resources = getResourceManager(dst);
+    data->clear(resources);
+    data->setLinkedBinary(src.data, src.size);
+  }
+
+  static detail::BinaryItem fromJson(JsonVariantConst src) {
+    auto data = getData(src);
+    return data ? data->asBinary() : detail::BinaryItem{nullptr, 0};
+  }
+
+  static bool checkJson(JsonVariantConst src) {
+    auto data = getData(src);
+    return data && data->type() == detail::VariantType::LinkedBinary;
+  }
+};
+
+// 添加对MsgPackBinary的转换支持
+inline void convertToJson(const detail::BinaryItem& src, JsonVariant dst) {
+  auto data = detail::VariantAttorney::getData(dst);
+  if (!data)
+    return;
+  auto resources = detail::VariantAttorney::getResourceManager(dst);
+  data->clear(resources);
+  data->setLinkedBinary(src.data, src.size);
+}
+
 ARDUINOJSON_END_PUBLIC_NAMESPACE

@@ -71,6 +71,15 @@ struct Converter<MsgPackBinary> : private detail::VariantAttorney {
   }
 
   static bool checkJson(JsonVariantConst src) {
+    auto data = getData(src);
+    if (!data)
+      return false;
+    
+    // 检查是否是二进制类型
+    if (data->type() == detail::VariantType::LinkedBinary)
+      return true;
+    
+    // 兼容性检查：是否是以二进制头开始的RawString
     return fromJson(src).data() != nullptr;
   }
 };

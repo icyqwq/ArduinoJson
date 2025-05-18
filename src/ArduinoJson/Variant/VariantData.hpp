@@ -88,9 +88,7 @@ class VariantData {
                                      content_.asOwnedString->length));
 
       case VariantType::LinkedBinary:
-        return visit.visit(RawString(
-            static_cast<const char*>(content_.asLinkedBinary.data),
-            content_.asLinkedBinary.size));
+        return visit.visit(content_.asLinkedBinary);
 
       case VariantType::Int32:
         return visit.visit(static_cast<JsonInteger>(content_.asInt32));

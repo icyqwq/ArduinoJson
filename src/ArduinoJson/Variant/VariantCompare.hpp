@@ -10,6 +10,7 @@
 #include <ArduinoJson/Polyfills/utility.hpp>
 #include <ArduinoJson/Strings/StringAdapters.hpp>
 #include <ArduinoJson/Variant/JsonVariantVisitor.hpp>
+#include <ArduinoJson/Variant/VariantAttorney.hpp>
 
 ARDUINOJSON_BEGIN_PRIVATE_NAMESPACE
 
@@ -157,6 +158,29 @@ struct VariantComparer : ComparerBase {
   CompareResult visit(RawString value) {
     RawComparer comparer(value);
     return reverseResult(comparer);
+  }
+
+  CompareResult visit(const BinaryItem& lhs) {
+    // 二进制数据视为不相等，除非比较的也是二进制数据且内容相同
+    auto rhsData = VariantAttorney::getData(rhs);
+    if (rhsData && rhsData->type() == VariantType::LinkedBinary) {
+      const BinaryItem& rhsBinary = rhsData->asBinary();
+      
+      // 比较长度
+      if (lhs.size != rhsBinary.size)
+        return lhs.size < rhsBinary.size ? COMPARE_RESULT_LESS : COMPARE_RESULT_GREATER;
+      
+      // 比较内容
+      int result = memcmp(lhs.data, rhsBinary.data, lhs.size);
+      if (result < 0)
+        return COMPARE_RESULT_LESS;
+      else if (result > 0) 
+        return COMPARE_RESULT_GREATER;
+      else
+        return COMPARE_RESULT_EQUAL;
+    }
+    
+    return COMPARE_RESULT_DIFFER;
   }
 
   CompareResult visit(JsonInteger lhs) {

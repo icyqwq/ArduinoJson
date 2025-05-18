@@ -121,6 +121,24 @@ class MsgPackSerializer : public VariantDataVisitor<size_t> {
     return bytesWritten();
   }
 
+  size_t visit(const BinaryItem& binary) {
+    auto n = binary.size;
+    
+    if (n < 0x100) {
+      writeByte(0xC4);
+      writeInteger(uint8_t(n));
+    } else if (n < 0x10000) {
+      writeByte(0xC5);
+      writeInteger(uint16_t(n));
+    } else {
+      writeByte(0xC6);
+      writeInteger(uint32_t(n));
+    }
+    
+    writeBytes(reinterpret_cast<const uint8_t*>(binary.data), n);
+    return bytesWritten();
+  }
+
   size_t visit(JsonInteger value) {
     if (value > 0) {
       visit(static_cast<JsonUInt>(value));
