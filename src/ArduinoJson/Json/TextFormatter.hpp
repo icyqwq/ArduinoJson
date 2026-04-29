@@ -57,10 +57,24 @@ class TextFormatter {
     if (specialChar) {
       writeRaw('\\');
       writeRaw(specialChar);
-    } else if (c) {
-      writeRaw(c);
+    } else if (static_cast<uint8_t>(c) < 0x20) {
+      // RFC 8259 §7: control characters U+0000..U+001F MUST be escaped.
+      // The escape table only covers \b \f \n \r \t; escape every other
+      // control byte as \u00XX so downstream strict JSON parsers (e.g.
+      // JavaScript's JSON.parse) do not report "Bad control character in
+      // string literal" when untrusted bytes end up inside a string value.
+      static const char kHex[] = "0123456789abcdef";
+      char buf[7];
+      buf[0] = '\\';
+      buf[1] = 'u';
+      buf[2] = '0';
+      buf[3] = '0';
+      buf[4] = kHex[(static_cast<uint8_t>(c) >> 4) & 0x0F];
+      buf[5] = kHex[static_cast<uint8_t>(c) & 0x0F];
+      buf[6] = '\0';
+      writeRaw(buf);
     } else {
-      writeRaw("\\u0000");
+      writeRaw(c);
     }
   }
 
